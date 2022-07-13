@@ -1,0 +1,133 @@
+-- Selecting columns
+
+select created_time, engaged_fans, post_clicks, reach, impressions from 
+"PostInsights" order by created_time desc
+
+--- Filtering
+-- note dates are in single quotes
+select  "CountryCode" , "NumberOfFans"  from "FansPerCountry"
+where "Date" = '2018-10-16'
+order by "NumberOfFans"  desc limit 25
+
+-- get country code
+Select split_part("country",'-',1) from "CountryRegions"
+
+-- get country name
+Select split_part("country",'-',2) from "CountryRegions"
+
+-- But countrycode in FansPerCountry table is different from the split portion 
+
+----getting avg new likes
+select "date",avg("new_likes") from "GlobalPage"
+group by "date"
+order by "date" desc
+
+--- getting fans count
+select sum(number_of_fans) from "FansPerGenderAge";
+--26534872
+
+select sum(number_of_fans) from "FansPerGenderAge" 
+where "gender" = 'F';
+-14981907
+
+--getting the latest date
+Select * from "FansPerGenderAge" order by "date" desc limit 10;
+--'2018-10-16'
+
+
+-- Getting percent divide of gender on latest date
+select gender, 
+sum(number_of_fans)*100/(select sum(number_of_fans) from "FansPerGenderAge" where "date" = '2018-10-16' )
+from "FansPerGenderAge"  
+where "date" = '2018-10-16'
+group by "gender";
+
+
+
+-- inner join to find penetration ratio
+select  p."country_name",
+"NumberOfFans"/Cast("population" AS FLOAT) as penetration_ratio
+from "PopStats" as p inner join "FansPerCountry" as f
+on p."country_code" = f."CountryCode"
+where "Date" = '2018-10-16'
+-- casting as float is essential otherwise diving two ints you get 0
+
+
+-- to check the total rows
+select  count(*) 
+from "PopStats" inner join "FansPerCountry" 
+on "PopStats"."country_code" = "FansPerCountry"."CountryCode"
+where "Date" = '2018-10-16'
+-- implies there are 45 distinct countries
+
+
+
+-- selecting cities in large countries with least no. of fans
+select distinct(f.city),f.country_code, f.number_of_fans from "FansPerCity" as f 
+inner join "PopStats" as p
+on p."country_code" = f.country_code
+where p.population > 20000000
+and f.date = '2018-10-16'
+order by f.number_of_fans asc
+limit 10
+-- no need of asc
+
+-- selecting cities with their countries that have max fans
+select city,country_name, sum(number_of_fans) as total_fans
+from "FansPerCity" as f 
+inner join "PopStats" as p
+on p.country_code = f.country_code
+group by city,country_name
+order by total_fans desc
+limit 10
+-- here in the order by clause have alias name or sum(number_of_fans)
+
+-- partition by()
+-- if we want to group by only one column, but select more than one column then we have to 
+-- go for partition.
+
+select country_id,date, gdp, 
+avg(gdp) over (partition by country_id) country_avg_gdp 
+from "CountryStats"
+
+--here by using group by 'country_id' we cannot include the additional date column
+-- and grouping by multiple columns will change the results.
+
+-- to order by date we need a subquery
+-- subqueries need alias
+-- we need country_id in where column 
+-- so that we get year-wise for a particular country
+-- and not a mix of countries.
+
+select * from
+(select country_id,date, gdp, 
+avg(gdp) over (partition by country_id) country_avg_gdp 
+from "CountryStats") as C
+where c.country_id =1
+order by c.date;
+
+-- GamesStats, Athletes, CountryRegions: tables
+-- region, athelete_id, sum(medals) : columns
+
+select * from "CountryRegions" limit 25
+
+select * from "GamesStats" where country_id = 11
+
+-- we need to find the top gold-medal winning athelete in every region
+
+select * from (
+select region,athlete_id, sum("Gold") as total_gold_cnt,
+row_number() over( partition by region order by sum("Gold") desc) as athelete_rank
+from "GamesStats" g
+inner join "CountryRegions" c
+on g.country_id = c.id
+group by region,athlete_id ) as m_query
+where total_gold_cnt >0
+
+-- here, along with agg fn, we have windows fn row_number() 
+
+
+
+
+
+
