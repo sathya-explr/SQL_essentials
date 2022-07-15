@@ -1,0 +1,101 @@
+-- Using case statement
+-- calculate bmi, segregate the based on values
+
+select sport,
+case 
+when weight*100/(height)^2 < 0.25 then '<0.25'
+when weight*100/(height)^2 < 0.30  then '<0.30'
+when weight*100/(height)^2 >= 0.30 then '>=0.30'
+END as bmi_bucket,
+count(distinct athlete_id) as total_athletes
+from "GamesStats" g
+join "Athletes" a
+on g.athlete_id = a.id
+group by sport,bmi_bucket
+order by sport,total_athletes desc
+
+-- there is no change by including weight*100/(height)^2 >= 0.25 in the second when clause.
+-- need to look data for
+
+
+
+
+
+-- moving average queries
+select * from "StockPrice"
+
+-- refer here:
+--https://ubiq.co/database-blog/calculate-moving-average-postgresql/#:~:text=To%20calculate%20moving%20average%20in%20PostgreSQL%2C%20we%20first%20sort%20the,row%20and%20preceding%204%20rows.
+
+select date,close,
+avg(close) over(order by date ROWS BETWEEN 5 PRECEDING AND CURRENT ROW ) as six_days_avg
+from "StockPrice"
+order by date;
+
+
+
+
+
+-- using Datepart
+-- finding the best day to post
+select * from "PostInsights" limit 25
+
+select 
+case
+when DATE_PART('dow',created_time) = 0 then 'Sunday'
+when DATE_PART('dow',created_time) = 1 then 'Monday'
+when DATE_PART('dow',created_time) = 2 then 'Tuesday'
+when DATE_PART('dow',created_time) = 3 then 'Wednesday'
+when DATE_PART('dow',created_time) = 4 then 'Thursday'
+when DATE_PART('dow',created_time) = 5 then 'Friday'
+when DATE_PART('dow',created_time) = 6 then 'Saturday'
+End as Day_of_week,
+avg (Cast(engaged_fans as float)*100/reach) as engagement_ratio
+from "PostInsights"
+group by Day_of_week
+order by engagement_ratio desc
+-- instead of calculting the date_part in when clause, do it in case stmt
+-- and write when 0 then 'Sunday' and so on
+
+
+
+
+
+--Replace fn
+select region from "CountryRegions";
+
+select region, replace(region,'.','') from "CountryRegions";
+
+-- replacing more than one chacracters
+
+select region, trim(translate(region,'. &',' and'))
+from "CountryRegions"
+;
+
+
+
+--handling null values
+select count(*) from "Games" where medal isnull;
+
+-- coalesce function
+-- equivalent is NVL in oracle and ifnull in mysql
+-- it returns the first non null argument from the list of arguments/gives 
+-- it is used for substituting the null values with meaningful value
+select sport, coalesce(medal,'NA') from "Games" limit 10
+
+
+
+-- data segrgation using REGEXP_MATCHES
+-- only rows that have the substring are filtered and displayed.
+
+-- selecting only men events
+select *, REGEXP_MATCHES(event,'Men') as Mens_event from "GamesStats";
+--2585 rows
+
+
+select *, REGEXP_MATCHES(event,'Women') as Women_event from "GamesStats";
+--2352 rows
+
+
+select count(*) from "GamesStats";
+-- total 4937 = (2585 + 2352)
